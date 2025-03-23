@@ -631,7 +631,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             stationList.innerHTML = "";
             stations.forEach(station => {
                 const li = document.createElement("li");
-                li.textContent = station.name;
+                li.innerHTML = `
+                    <i class="fas fa-radio"></i>
+                    <span>${station.name}</span>
+                `;
                 li.dataset.src = station.url;
                 li.addEventListener("click", () => loadStation(li));
                 stationList.appendChild(li);
