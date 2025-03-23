@@ -678,7 +678,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         nowPlaying.textContent = `Loading: ${stationElement.textContent}`;
         
         try {
-            if (stationUrl.endsWith(".m3u8") && hlsSupported) {
+            if (stationUrl.includes(".m3u8") && hlsSupported) {
                 const hls = new Hls();
                 hls.loadSource(stationUrl);
                 hls.attachMedia(audioPlayer);
@@ -688,7 +688,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         playPauseButton.textContent = "Pause";
                     });
                 });
-            } else if (stationUrl.endsWith(".mpd") && dashSupported) {
+            } else if (stationUrl.includes(".mpd") && dashSupported) {
                 const player = dashjs.MediaPlayer().create();
                 player.initialize(audioPlayer, stationUrl, true);
                 audioPlayer.play().then(() => {
@@ -724,6 +724,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await loadStations();
 });
+
 
 </script>
 </body>
