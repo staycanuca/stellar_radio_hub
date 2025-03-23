@@ -632,8 +632,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             stations.forEach(station => {
                 const li = document.createElement("li");
                 li.innerHTML = `
-                    <i class="fas fa-radio"></i>
-                    <span>${station.name}</span>
+                    <div class="station-icon" style="background-color: #45B7D1">
+                        <i class="fas fa-radio"></i>
+                    </div>
+                    <span class="station-name">${station.name}</span>
                 `;
                 li.dataset.src = station.url;
                 li.addEventListener("click", () => loadStation(li));
