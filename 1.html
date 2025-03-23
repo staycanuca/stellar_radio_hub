@@ -607,127 +607,184 @@
         </div>
     </footer>
 
-    <script>
-        const audioPlayer = document.getElementById('audio-player');
-        const stationList = document.getElementById('station-list');
-        const playPauseButton = document.getElementById('play-pause');
-        const volumeControl = document.getElementById('volume');
-        const nowPlaying = document.getElementById('now-playing');
-        const trackInfo = document.getElementById('track-info');
-        const toggleFavoriteButton = document.getElementById('toggle-favorite');
-        const favoritesList = document.getElementById('favorites-list');
+    <!-- JavaScript section -->
+<script>
+    const audioPlayer = document.getElementById('audio-player');
+    const stationList = document.getElementById('station-list');
+    const playPauseButton = document.getElementById('play-pause');
+    const volumeControl = document.getElementById('volume');
+    const nowPlaying = document.getElementById('now-playing');
+    const trackInfo = document.getElementById('track-info');
+    const toggleFavoriteButton = document.getElementById('toggle-favorite');
+    const favoritesList = document.getElementById('favorites-list');
 
-        let currentStation = null;
-        let isLoading = false;
+    let currentStation = null;
+    let isLoading = false;
+    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 
-        async function loadStations() {
-            try {
-                const response = await fetch('https://raw.githubusercontent.com/junguler/m3u-radio-music-playlists/refs/heads/main/%2Bchecked%2B/r/romania.m3u');
-                const m3uText = await response.text();
-                const stations = parseM3U(m3uText);
-                stationList.innerHTML = ''; // Clear existing stations
-                
-                stations.forEach(station => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div class="station-icon" style="background-color: #3498DB">
-                            <i class="fas fa-music"></i>
-                        </div>
-                        <span class="station-name">${station.name}</span>
-                    `;
-                    li.setAttribute('data-src', station.url);
-                    stationList.appendChild(li);
-                });
-            } catch (error) {
-                console.error('Error loading stations:', error);
-            }
-        }
-
-        function parseM3U(m3uText) {
-            const lines = m3uText.split('\n');
-            const stations = [];
-            let currentStation = {};
-
-            lines.forEach(line => {
-                if (line.startsWith('#EXTINF:')) {
-                    const name = line.split(',')[1];
-                    currentStation.name = name;
-                } else if (line.startsWith('http')) {
-                    currentStation.url = line;
-                    stations.push({ ...currentStation });
-                    currentStation = {};
-                }
+    async function loadStations() {
+        try {
+            const response = await fetch('https://raw.githubusercontent.com/junguler/m3u-radio-music-playlists/refs/heads/main/%2Bchecked%2B/r/romania.m3u');
+            const m3uText = await response.text();
+            const stations = parseM3U(m3uText);
+            stationList.innerHTML = ''; // Clear existing stations
+            
+            stations.forEach(station => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="station-icon" style="background-color: #3498DB">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <span class="station-name">${station.name}</span>
+                `;
+                li.setAttribute('data-src', station.url);
+                stationList.appendChild(li);
             });
-
-            return stations;
+        } catch (error) {
+            console.error('Error loading stations:', error);
         }
+    }
 
-        async function loadStation(stationElement) {
-            if (isLoading) return;
-            isLoading = true;
-            currentStation = stationElement;
-            const stationUrl = stationElement.getAttribute('data-src');
-            const stationName = stationElement.querySelector('.station-name').textContent;
-            nowPlaying.textContent = `Loading: ${stationName}`;
+    function parseM3U(m3uText) {
+        const lines = m3uText.split('\n');
+        const stations = [];
+        let currentStation = {};
+
+        lines.forEach(line => {
+            if (line.startsWith('#EXTINF:')) {
+                const name = line.split(',')[1];
+                currentStation.name = name;
+            } else if (line.startsWith('http')) {
+                currentStation.url = line;
+                stations.push({ ...currentStation });
+                currentStation = {};
+            }
+        });
+
+        return stations;
+    }
+
+    async function loadStation(stationElement) {
+        if (isLoading) return;
+        isLoading = true;
+        currentStation = stationElement;
+        const stationUrl = stationElement.getAttribute('data-src');
+        const stationName = stationElement.querySelector('.station-name').textContent;
+        nowPlaying.textContent = `Loading: ${stationName}`;
+        updateFavoriteButton();
+        
+        try {
+            audioPlayer.src = stationUrl;
+            audioPlayer.load();
+            await new Promise((resolve, reject) => {
+                const onCanPlay = () => {
+                    audioPlayer.removeEventListener('canplay', onCanPlay);
+                    audioPlayer.removeEventListener('error', onError);
+                    resolve();
+                };
+                const onError = () => {
+                    audioPlayer.removeEventListener('canplay', onCanPlay);
+                    audioPlayer.removeEventListener('error', onError);
+                    reject(new Error('Failed to load audio'));
+                };
+                audioPlayer.addEventListener('canplay', onCanPlay);
+                audioPlayer.addEventListener('error', onError);
+            });
+            await audioPlayer.play();
+            nowPlaying.textContent = `Now playing: ${stationName}`;
+            playPauseButton.textContent = 'Pause';
+        } catch (error) {
+            console.error('Playback error:', error);
+            nowPlaying.textContent = `Error: Unable to play ${stationName}.`;
+            stationElement.classList.add('unavailable');
+        }
+        isLoading = false;
+        updateRecentlyPlayed(stationElement);
+    }
+
+    function updateFavoriteButton() {
+        if (currentStation) {
+            const isFavorite = checkIfFavorite(currentStation);
+            const favoriteIcon = toggleFavoriteButton.querySelector('i');
+            if (isFavorite) {
+                favoriteIcon.classList.remove('far');
+                favoriteIcon.classList.add('fas');
+            } else {
+                favoriteIcon.classList.remove('fas');
+                favoriteIcon.classList.add('far');
+            }
+        }
+    }
+
+    function checkIfFavorite(station) {
+        const stationUrl = station.getAttribute('data-src');
+        return favorites.includes(stationUrl);
+    }
+
+    function toggleFavorite() {
+        if (currentStation) {
+            const stationUrl = currentStation.getAttribute('data-src');
+            if (checkIfFavorite(currentStation)) {
+                favorites = favorites.filter(fav => fav !== stationUrl);
+            } else {
+                favorites.push(stationUrl);
+            }
+            localStorage.setItem('favorites', JSON.stringify(favorites));
             updateFavoriteButton();
-            
-            try {
-                audioPlayer.src = stationUrl;
-                audioPlayer.load();
-                await new Promise((resolve, reject) => {
-                    const onCanPlay = () => {
-                        audioPlayer.removeEventListener('canplay', onCanPlay);
-                        audioPlayer.removeEventListener('error', onError);
-                        resolve();
-                    };
-                    const onError = () => {
-                        audioPlayer.removeEventListener('canplay', onCanPlay);
-                        audioPlayer.removeEventListener('error', onError);
-                        reject(new Error('Failed to load audio'));
-                    };
-                    audioPlayer.addEventListener('canplay', onCanPlay);
-                    audioPlayer.addEventListener('error', onError);
-                });
-                await audioPlayer.play();
-                nowPlaying.textContent = `Now playing: ${stationName}`;
-                playPauseButton.textContent = 'Pause';
-            } catch (error) {
-                console.error('Playback error:', error);
-                nowPlaying.textContent = `Error: Unable to play ${stationName}.`;
-                stationElement.classList.add('unavailable');
-            }
-            isLoading = false;
-            updateRecentlyPlayed(stationElement);
+            loadFavorites();
         }
+    }
 
-        stationList.addEventListener('click', (e) => {
-            if (e.target.tagName === 'LI' && !e.target.classList.contains('unavailable')) {
-                loadStation(e.target);
+    function loadFavorites() {
+        favoritesList.innerHTML = '';
+        favorites.forEach(favUrl => {
+            const stationElement = Array.from(stationList.children).find(li => li.getAttribute('data-src') === favUrl);
+            if (stationElement) {
+                const clone = stationElement.cloneNode(true);
+                favoritesList.appendChild(clone);
             }
         });
 
-        playPauseButton.addEventListener('click', async () => {
-            if (isLoading || !currentStation) return;
-            
-            try {
-                if (audioPlayer.paused) {
-                    await audioPlayer.play();
-                    playPauseButton.textContent = 'Pause';
-                } else {
-                    audioPlayer.pause();
-                    playPauseButton.textContent = 'Play';
-                }
-            } catch (error) {
-                console.error('Playback toggle error:', error);
-                nowPlaying.textContent = `Error: Unable to play/pause. ${error.message}`;
+        document.getElementById('favorites-empty-state').style.display = favorites.length ? 'none' : 'block';
+    }
+
+    function updateRecentlyPlayed(stationElement) {
+        // Implement your logic to update recently played stations
+    }
+
+    stationList.addEventListener('click', (e) => {
+        if (e.target.tagName === 'LI' && !e.target.classList.contains('unavailable')) {
+            loadStation(e.target);
+        }
+    });
+
+    playPauseButton.addEventListener('click', async () => {
+        if (isLoading || !currentStation) return;
+        
+        try {
+            if (audioPlayer.paused) {
+                await audioPlayer.play();
+                playPauseButton.textContent = 'Pause';
+            } else {
+                audioPlayer.pause();
+                playPauseButton.textContent = 'Play';
             }
-        });
+        } catch (error) {
+            console.error('Playback toggle error:', error);
+            nowPlaying.textContent = `Error: Unable to play/pause. ${error.message}`;
+        }
+    });
 
-        volumeControl.addEventListener('input', (e) => {
-            audioPlayer.volume = e.target.value;
-        });
+    volumeControl.addEventListener('input', (e) => {
+        audioPlayer.volume = e.target.value;
+    });
 
-        document.addEventListener('DOMContentLoaded', loadStations);
-    </script>
+    toggleFavoriteButton.addEventListener('click', toggleFavorite);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadStations();
+        loadFavorites();
+    });
+</script>
 </body>
 </html>
