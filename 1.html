@@ -614,6 +614,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const stationList = document.getElementById("station-list");
     const playPauseButton = document.getElementById("play-pause");
     const nowPlaying = document.getElementById("now-playing");
+    const volumeControl = document.getElementById("volume");
     let currentStation = null;
     
     // Verifică dacă HLS.js și DASH.js sunt suportate
@@ -715,6 +716,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             audioPlayer.pause();
             playPauseButton.textContent = "Play";
         }
+    });
+
+    volumeControl.addEventListener("input", (event) => {
+        audioPlayer.volume = event.target.value;
     });
 
     await loadStations();
