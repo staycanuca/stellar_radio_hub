@@ -616,11 +616,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const nowPlaying = document.getElementById("now-playing");
     let currentStation = null;
     
-    // Verifică dacă HLS.js este suportat
-    let hlsSupported = false;
-    if (window.Hls && Hls.isSupported()) {
-        hlsSupported = true;
-    }
+    // Verifică dacă HLS.js și DASH.js sunt suportate
+    let hlsSupported = window.Hls && Hls.isSupported();
+    let dashSupported = window.dashjs;
 
     async function loadStations() {
         try {
@@ -683,6 +681,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                         nowPlaying.textContent = `Now playing: ${stationElement.textContent}`;
                         playPauseButton.textContent = "Pause";
                     });
+                });
+            } else if (stationUrl.endsWith(".mpd") && dashSupported) {
+                const player = dashjs.MediaPlayer().create();
+                player.initialize(audioPlayer, stationUrl, true);
+                audioPlayer.play().then(() => {
+                    nowPlaying.textContent = `Now playing: ${stationElement.textContent}`;
+                    playPauseButton.textContent = "Pause";
                 });
             } else {
                 audioPlayer.src = stationUrl;
